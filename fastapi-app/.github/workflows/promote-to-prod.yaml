@@ -1,0 +1,35 @@
+name: Promote to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy to prod'
+        required: true
+        type: string
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update prod image tag
+      run: |
+        NEW_TAG=${{ github.event.inputs.image_tag }}
+
+        sed -i "s|tag: \".*\"|tag: \"${NEW_TAG}\"|" \
+          2026/06/260609-k8s-interview-project/gitops/envs/prod/values.yaml
+
+        sed -i "s|APP_VERSION: \".*\"|APP_VERSION: \"${NEW_TAG}\"|" \
+          2026/06/260609-k8s-interview-project/gitops/envs/prod/values.yaml
+
+    - name: Commit and push
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add .
+        git commit -m "release: promote ${NEW_TAG} to production"
+        git push

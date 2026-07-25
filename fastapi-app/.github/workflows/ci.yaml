@@ -1,0 +1,109 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+
+env:
+  REGISTRY: registry.cn-hongkong.aliyuncs.com
+  NAMESPACE: k8s-interview
+  IMAGE_NAME: demo-app
+
+jobs:
+  # ============================================
+  # Job 1: 测试
+  # ============================================
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        cd app
+        pip install -r requirements.txt
+        pip install pytest httpx
+
+    - name: Run tests
+      run: |
+        cd app
+        pytest test_main.py -v
+
+  # ============================================
+  # Job 2: 构建 & 推送镜像
+  # ============================================
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Generate image tag
+      id: meta
+      run: |
+        VERSION=$(date +%Y%m%d)-${GITHUB_SHA::7}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Image tag: $VERSION"
+
+    - name: Login to Alicloud ACR
+      run: |
+        docker login ${{ env.REGISTRY }} \
+          -u ${{ secrets.ACR_USERNAME }} \
+          -p ${{ secrets.ACR_PASSWORD }}
+
+    - name: Build image
+      run: |
+        docker build -t ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }} \
+          --build-arg APP_VERSION=${{ steps.meta.outputs.version }} \
+          ./app
+
+    - name: Push image
+      run: |
+        docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+
+  # ============================================
+  # Job 3: 更新 GitOps Repo (image tag)
+  # ============================================
+  update-gitops:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update dev image tag
+      run: |
+        NEW_TAG=${{ needs.build-and-push.outputs.image_tag }}
+
+        # 更新 dev values
+        sed -i "s|tag: \".*\"|tag: \"${NEW_TAG}\"|" \
+          2026/06/260609-k8s-interview-project/gitops/envs/dev/values.yaml
+
+        # 更新 APP_VERSION
+        sed -i "s|APP_VERSION: \".*\"|APP_VERSION: \"${NEW_TAG}\"|" \
+          2026/06/260609-k8s-interview-project/gitops/envs/dev/values.yaml
+
+    - name: Commit and push
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add .
+        git commit -m "ci: update dev image tag to ${{ needs.build-and-push.outputs.image_tag }}"
+        git push

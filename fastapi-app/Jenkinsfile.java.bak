@@ -1,0 +1,92 @@
+pipeline {
+  agent {
+    kubernetes {
+      yaml '''
+        apiVersion: v1
+        kind: Pod
+        spec:
+          containers:
+          - name: python
+            image: python:3.13-slim
+            command: ['sleep']
+            args: ['infinity']
+          - name: docker
+            image: docker:24-dind
+            securityContext:
+              privileged: true
+            command: ['sleep']
+            args: ['infinity']
+      '''
+    }
+  }
+
+  environment {
+    REGISTRY = 'registry.cn-hongkong.aliyuncs.com/my-namespace'
+    IMAGE    = "${REGISTRY}/fastapi-app:${env.BUILD_NUMBER}"
+  }
+
+  stages {
+    stage('1. 拉代码') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('2. 安装依赖 & 单元测试') {
+      steps {
+        container('python') {
+          sh '''
+            python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+            pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+            pip install pytest httpx -i https://pypi.tuna.tsinghua.edu.cn/simple
+            pytest -v
+          '''
+        }
+      }
+    }
+
+    stage('3. 打包并推送镜像') {
+      steps {
+        container('docker') {
+          withCredentials([usernamePassword(
+            credentialsId: 'acr',
+            usernameVariable: 'U',
+            passwordVariable: 'P'
+          )]) {
+            sh '''
+              echo $P | docker login $REGISTRY -u $U --password-stdin
+              docker build -t $IMAGE -t $REGISTRY/fastapi-app:latest .
+              docker push $IMAGE
+              docker push $REGISTRY/fastapi-app:latest
+            '''
+          }
+        }
+      }
+    }
+
+    // 可选：更新 GitOps 仓库，让 Argo CD 自动部署
+    stage('4. 更新 GitOps manifest') {
+      when { branch 'main' }
+      steps {
+        withCredentials([sshUserPrivateKey(credentialsId: 'git-ssh', keyFileVariable: 'KEY')]) {
+          sh '''
+            export GIT_SSH_COMMAND="ssh -i $KEY -o StrictHostKeyChecking=no"
+            rm -rf gitops-repo
+            git clone git@github.com:youraccount/gitops-repo.git
+            cd gitops-repo
+            sed -i "s|image:.*fastapi-app:.*|image: $IMAGE|" apps/fastapi-app/deployment.yaml
+            git config user.email "jenkins@ci.com"
+            git config user.name "jenkins"
+            git commit -am "deploy: $IMAGE" || echo "no change"
+            git push
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    success { echo "✅ 成功！镜像: ${IMAGE}" }
+    failure { echo "❌ 失败" }
+  }
+}

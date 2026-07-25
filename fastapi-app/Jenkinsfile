@@ -1,6 +1,7 @@
 pipeline {
   agent {
     kubernetes {
+    kubernetes {
       yaml '''
         apiVersion: v1
         kind: Pod
@@ -14,8 +15,9 @@ pipeline {
             image: docker:24-dind
             securityContext:
               privileged: true
-            command: ['sleep']
-            args: ['infinity']
+            env:
+              - name: DOCKER_TLS_CERTDIR
+                value: ""
       '''
     }
   }

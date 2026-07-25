@@ -1,7 +1,13 @@
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
+
 import os
 
 app = FastAPI()
+
+# 自动采集 http_requests_total、http_request_duration_seconds 等指标
+# 并暴露在 /metrics 端点
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 VERSION = os.getenv("APP_VERSION", "0.2.0")
 

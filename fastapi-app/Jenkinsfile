@@ -74,8 +74,9 @@ pipeline {
     }
 
     // 可选：更新 GitOps 仓库，让 Argo CD 自动部署
+// ...existing code...
     stage('4. 更新 GitOps manifest') {
-      when { branch 'main' }
+      // when { branch 'main' }        ← 删掉这行
       steps {
         withCredentials([sshUserPrivateKey(credentialsId: 'git-ssh', keyFileVariable: 'KEY')]) {
           sh '''
@@ -97,6 +98,7 @@ pipeline {
         }
       }
     }
+// ...existing code...
   }
 
   post {

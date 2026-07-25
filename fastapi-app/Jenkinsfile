@@ -38,12 +38,14 @@ pipeline {
     stage('2. 安装依赖 & 单元测试') {
       steps {
         container('python') {
-          sh '''
-            python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
-            pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-            pip install pytest httpx -i https://pypi.tuna.tsinghua.edu.cn/simple
-            pytest -v
-          '''
+          dir('fastapi-app') {            // ← 加这一层
+            sh '''
+              python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+              pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+              pip install pytest httpx -i https://pypi.tuna.tsinghua.edu.cn/simple
+              pytest -v
+            '''
+          }
         }
       }
     }
@@ -51,18 +53,20 @@ pipeline {
     stage('3. 打包并推送镜像') {
       steps {
         container('docker') {
-          withCredentials([usernamePassword(
-            credentialsId: 'harbor',
-            usernameVariable: 'HARBOR_USER',
-            passwordVariable: 'HARBOR_PASS'
-          )]) {
-            sh '''
-              echo $HARBOR_PASS | docker login $REGISTRY -u $HARBOR_USER --password-stdin
-              docker build -t $IMAGE -t $IMAGE_LATEST .
-              docker push $IMAGE
-              docker push $IMAGE_LATEST
-              docker logout $REGISTRY
-            '''
+          dir('fastapi-app') {            // ← docker build 也要在这里，才能找到 Dockerfile
+            withCredentials([usernamePassword(
+              credentialsId: 'harbor',
+              usernameVariable: 'HARBOR_USER',
+              passwordVariable: 'HARBOR_PASS'
+            )]) {
+              sh '''
+                echo $HARBOR_PASS | docker login $REGISTRY -u $HARBOR_USER --password-stdin
+                docker build -t $IMAGE -t $IMAGE_LATEST .
+                docker push $IMAGE
+                docker push $IMAGE_LATEST
+                docker logout $REGISTRY
+              '''
+            }
           }
         }
       }

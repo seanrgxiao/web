@@ -40,9 +40,9 @@ pipeline {
         container('python') {
           dir('fastapi-app') {            // ← 加这一层
             sh '''
-              python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
-              pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
-              pip install pytest httpx -i https://pypi.tuna.tsinghua.edu.cn/simple
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt
+              pip install pytest httpx
               pytest -v
             '''
           }

@@ -13,7 +13,7 @@ VERSION = os.getenv("APP_VERSION", "0.2.0")
 
 @app.get("/")
 def root():
-    return {"message": "Hello from K8s Interview App! v5 🚀", "version": VERSION}
+    return {"message": "Hello from K8s Interview App! v5.5.blue 🚀", "version": VERSION}
 
 @app.get("/health")
 def health():

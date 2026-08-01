@@ -23,6 +23,9 @@ def health():
 def ready():
     return {"status": "ready"}
 
+# @app.get("/version")
+# def version():
+#     return {"version": VERSION, "env": "dev"}
 @app.get("/version")
 def version():
-    return {"version": VERSION, "env": "dev"}
+    return {"version": "v2"}

@@ -27,6 +27,13 @@ def ready():
 # def version():
 #     return {"version": VERSION, "env": "dev"}
 
+# @app.get("/version")
+# def version():
+#     return {"version": os.getenv("APP_VERSION", "unknown")}
+# # ...existing code...
+
+APP_VERSION = "v3"   # ← 每次发版改这里
+
 @app.get("/version")
 def version():
-    return {"version": os.getenv("APP_VERSION", "unknown")}
+    return {"version": APP_VERSION, "build": os.getenv("BUILD_NUMBER", "unknown")}

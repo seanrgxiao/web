@@ -26,6 +26,7 @@ def ready():
 # @app.get("/version")
 # def version():
 #     return {"version": VERSION, "env": "dev"}
+
 @app.get("/version")
 def version():
-    return {"version": "v2"}
+    return {"version": os.getenv("APP_VERSION", "unknown")}

@@ -88,8 +88,8 @@ pipeline {
 
 
             MANIFEST="2026/06/260609-k8s-interview-project/gitops/app2-canary/rollout.yaml"
-            sed -i "s|image:.*fastapi-app:.*|image: $REGISTRY/$PROJECT/$IMAGE_NAME:$BUILD_NUMBER|" $MANIFEST
-
+            sed -i "s|image:.*fastapi-app:.*|image: $IMAGE|" $BASE/app2/rollout.yaml
+            sed -i "s|image:.*fastapi-app:.*|image: $IMAGE|" $BASE/app2-canary/rollout.yaml
 
             git config user.email "jenkins@ci.local"
             git config user.name  "Jenkins CI Bot"

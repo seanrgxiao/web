@@ -32,7 +32,7 @@ def ready():
 #     return {"version": os.getenv("APP_VERSION", "unknown")}
 # # ...existing code...
 
-APP_VERSION = "v3.2"   # ← 每次发版改这里
+APP_VERSION = "v3.3"   # ← 每次发版改这里
 
 @app.get("/version")
 def version():

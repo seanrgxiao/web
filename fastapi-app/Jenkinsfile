@@ -87,9 +87,14 @@ pipeline {
             cd tools
 
 
-            MANIFEST="2026/06/260609-k8s-interview-project/gitops/app2-canary/rollout.yaml"
+
+
+            BASE="2026/06/260609-k8s-interview-project/gitops"
+
+            # 同时更新两个策略
             sed -i "s|image:.*fastapi-app:.*|image: $IMAGE|" $BASE/app2/rollout.yaml
             sed -i "s|image:.*fastapi-app:.*|image: $IMAGE|" $BASE/app2-canary/rollout.yaml
+
 
             git config user.email "jenkins@ci.local"
             git config user.name  "Jenkins CI Bot"
@@ -99,6 +104,9 @@ pipeline {
           '''
             // MANIFEST="2026/06/260609-k8s-interview-project/gitops/app2/deployment.yaml"
             // sed -i "s|image:.*fastapi-app:.*|image: $IMAGE|" $MANIFEST
+                        // MANIFEST="2026/06/260609-k8s-interview-project/gitops/app2-canary/rollout.yaml"
+            // sed -i "s|image:.*fastapi-app:.*|image: $IMAGE|" $BASE/app2/rollout.yaml
+            // sed -i "s|image:.*fastapi-app:.*|image: $IMAGE|" $BASE/app2-canary/rollout.yaml
         }
       }
     }

@@ -98,7 +98,7 @@ pipeline {
 
             git config user.email "jenkins@ci.local"
             git config user.name  "Jenkins CI Bot"
-            git add $MANIFEST
+            git add $BASE/
             git commit -m "ci: deploy $IMAGE [skip ci]" || echo "no change"
             git push origin main
           '''

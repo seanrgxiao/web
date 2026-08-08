@@ -9,7 +9,7 @@ app = FastAPI()
 # 并暴露在 /metrics 端点
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
-VERSION = os.getenv("APP_VERSION", "11.1.0")
+VERSION = os.getenv("APP_VERSION", "11.2.0")
 
 @app.get("/")
 def root():

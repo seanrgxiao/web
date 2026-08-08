@@ -44,7 +44,7 @@ pipeline {
               python -m pip install --upgrade pip
               pip install -r requirements.txt
               pip install pytest httpx
-              pytest tests/ -v
+              PYTHONPATH=app pytest tests/ -v
             '''
           }
         }

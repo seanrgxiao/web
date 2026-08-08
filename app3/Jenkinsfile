@@ -54,7 +54,7 @@ pipeline {
     stage('3. 打包并推送镜像') {
       steps {
         container('docker') {
-          dir('app3/app') {            // ← docker build 也要在这里，才能找到 Dockerfile
+          dir('app3') {            // ← docker build 也要在这里，才能找到 Dockerfile
             withCredentials([usernamePassword(
               credentialsId: 'harbor',
               usernameVariable: 'HARBOR_USER',

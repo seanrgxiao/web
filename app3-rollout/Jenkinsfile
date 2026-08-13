@@ -1,0 +1,108 @@
+pipeline {
+  agent {
+    kubernetes {
+      yaml '''
+        apiVersion: v1
+        kind: Pod
+        spec:
+          containers:
+          - name: python
+            image: python:3.13-slim
+            command: ['sleep']
+            args: ['infinity']
+          - name: docker
+            image: docker:24-dind
+            securityContext:
+              privileged: true
+            env:
+              - name: DOCKER_TLS_CERTDIR
+                value: ""
+      '''
+    }
+  }
+
+  environment {
+    REGISTRY   = 'harbor.chengyingpay.com'          // ← 改成你的 Harbor 地址
+    PROJECT    = 'harbor-project-app3'                     // ← 改成你的 Harbor 项目名
+    IMAGE_NAME = 'app3'
+    IMAGE      = "${REGISTRY}/${PROJECT}/${IMAGE_NAME}:${env.BUILD_NUMBER}"
+    IMAGE_LATEST = "${REGISTRY}/${PROJECT}/${IMAGE_NAME}:latest"
+  }
+
+  stages {
+    stage('1. 拉代码') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('2. 安装依赖 & 单元测试') {
+      steps {
+        container('python') {
+          dir('app3-rollout') {            // ← 加这一层
+            sh '''
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt
+              pip install pytest httpx
+              PYTHONPATH=app pytest tests/ -v
+            '''
+          }
+        }
+      }
+    }
+
+    stage('3. 打包并推送镜像') {
+      steps {
+        container('docker') {
+          dir('app3-rollout') {            // ← docker build 也要在这里，才能找到 Dockerfile
+            withCredentials([usernamePassword(
+              credentialsId: 'harbor',
+              usernameVariable: 'HARBOR_USER',
+              passwordVariable: 'HARBOR_PASS'
+            )]) {
+              sh '''
+                echo $HARBOR_PASS | docker login $REGISTRY -u $HARBOR_USER --password-stdin
+                docker build -t $IMAGE -t $IMAGE_LATEST .
+                docker push $IMAGE
+                docker push $IMAGE_LATEST
+                docker logout $REGISTRY
+              '''
+            }
+          }
+        }
+      }
+    }
+
+    // 可选：更新 GitOps 仓库，让 Argo CD 自动部署
+// ...existing code...
+    stage('4. 更新 GitOps manifest') {
+      // when { branch 'main' }        ← 删掉这行
+      steps {
+        withCredentials([sshUserPrivateKey(credentialsId: 'git-ssh', keyFileVariable: 'KEY')]) {
+          sh '''
+            export GIT_SSH_COMMAND="ssh -i $KEY -o StrictHostKeyChecking=no"
+
+            rm -rf tools
+            git clone git@github.com:seanrgxiao/tools.git
+            cd tools
+
+            KUSTOMIZATION="2026/06/260609-k8s-interview-project/gitops/app3/overlays/dev/kustomization.yaml"
+            sed -i "s|newTag: .*|newTag: \\"${BUILD_NUMBER}\\"|" $KUSTOMIZATION
+
+            git config user.email "jenkins@ci.local"
+            git config user.name  "Jenkins CI Bot"
+            git add $KUSTOMIZATION
+            git commit -m "ci: deploy $IMAGE [skip ci]" || echo "no change"
+            git push origin main
+          '''
+        }
+      }
+    }
+// ...existing code...
+  }
+
+  post {
+    success { echo "✅ 成功！镜像: ${IMAGE}" }
+    failure { echo "❌ 失败" }
+  }
+}

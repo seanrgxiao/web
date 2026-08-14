@@ -9,12 +9,11 @@ app = FastAPI()
 # 并暴露在 /metrics 端点
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
-VERSION = os.getenv("APP_VERSION", "11.2.0")
+VERSION = os.getenv("APP_VERSION", "21.1.0")
 
 @app.get("/")
 def root():
-    return {"message": "Hello from K8s Interview App! v11 🚀", "version": VERSION}
-
+    return {"message": "Hello from K8s Interview App! v21 🚀", "version": VERSION}
 @app.get("/health")
 def health():
     return {"status": "healthy"}

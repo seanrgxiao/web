@@ -1,0 +1,42 @@
+name: Build & Push
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: harbor.chengyingpay.com
+          username: ${{ secrets.HARBOR_USER }}
+          password: ${{ secrets.HARBOR_PASS }}
+
+      - name: Set image tag
+        id: tag
+        run: echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build & Push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          push: true
+          tags: harbor.chengyingpay.com/demo/rollout-app:${{ steps.tag.outputs.tag }}
+
+      - name: Update GitOps repo image tag
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_PAT }}
+        run: |
+          git clone https://x-access-token:${GH_TOKEN}@github.com/seanrgxiao/tools.git
+          cd tools
+          FILE=2026/09/260916-ack-rollout-project/gitops/apps/rollout-demo-canary/rollout.yaml
+          sed -i "s|image: harbor.chengyingpay.com/demo/rollout-app:.*|image: harbor.chengyingpay.com/demo/rollout-app:${{ steps.tag.outputs.tag }}|" $FILE
+          git config user.email "ci@bot"
+          git config user.name "ci-bot"
+          git commit -am "chore: bump rollout-app to ${{ steps.tag.outputs.tag }}"
+          git push

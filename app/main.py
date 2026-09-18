@@ -7,7 +7,7 @@ COLOR = os.getenv("APP_COLOR", "blue")
 
 @app.get("/")
 def root():
-    return {"version": VERSION, "color": COLOR, "message": "hello from rollout demo"}
+    return {"version": VERSION, "color": COLOR, "message": "hello from rollout demo,v1.0"}
 
 @app.get("/healthz")
 def health():
